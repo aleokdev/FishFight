@@ -30,7 +30,7 @@ impl MoveSpawnPoint {
 }
 
 impl UndoableAction for MoveSpawnPoint {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         let old_position = map.spawn_points.remove(self.index);
         self.old_position = Some(old_position);
 
@@ -45,7 +45,9 @@ impl UndoableAction for MoveSpawnPoint {
             }
         }
 
-        Ok(())
+        let inverse = Box::new(MoveSpawnPoint::new(self.index, old_position));
+
+        Ok(inverse)
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

@@ -26,7 +26,7 @@ impl SetLayerDrawOrderIndex {
 }
 
 impl UndoableAction for SetLayerDrawOrderIndex {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         for i in 0..map.draw_order.len() {
             let id = map.draw_order.get(i).unwrap();
             if id == &self.id {
@@ -47,7 +47,12 @@ impl UndoableAction for SetLayerDrawOrderIndex {
                 .insert(self.draw_order_index, self.id.clone());
         }
 
-        Ok(())
+        let inverse = Box::new(SetLayerDrawOrderIndex::new(
+            self.id,
+            self.old_draw_order_index,
+        ));
+
+        Ok(inverse)
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

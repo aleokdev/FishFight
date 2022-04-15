@@ -4,7 +4,7 @@ use macroquad::prelude::Vec2;
 
 use crate::map::Map;
 
-use super::UndoableAction;
+use super::{DeleteSpawnPoint, UndoableAction};
 
 #[derive(Debug)]
 pub struct CreateSpawnPoint {
@@ -18,10 +18,12 @@ impl CreateSpawnPoint {
 }
 
 impl UndoableAction for CreateSpawnPoint {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         map.spawn_points.push(self.position);
 
-        Ok(())
+        let inverse = Box::new(DeleteSpawnPoint::new(map.spawn_points.len() - 1));
+
+        Ok(inverse)
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

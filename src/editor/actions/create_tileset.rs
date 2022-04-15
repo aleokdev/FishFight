@@ -13,6 +13,7 @@ use core::error::Result;
 
 use crate::map::Map;
 
+use super::DeleteTileset;
 use super::UndoableAction;
 
 #[derive(Debug)]
@@ -28,7 +29,7 @@ impl CreateTileset {
 }
 
 impl UndoableAction for CreateTileset {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         let resources = storage::get::<Resources>();
         if let Some(texture_entry) = resources.textures.get(&self.texture_id).cloned() {
             let texture_size = uvec2(
@@ -60,7 +61,9 @@ impl UndoableAction for CreateTileset {
             ));
         }
 
-        Ok(())
+        let inverse = Box::new(DeleteTileset::new(self.id));
+
+        Ok(inverse)
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

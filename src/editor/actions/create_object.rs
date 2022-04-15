@@ -10,6 +10,7 @@ use core::error::Result;
 
 use crate::map::Map;
 
+use super::DeleteObject;
 use super::UndoableAction;
 
 use crate::map::MapObjectKind;
@@ -34,7 +35,7 @@ impl CreateObject {
 }
 
 impl UndoableAction for CreateObject {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         if let Some(layer) = map.layers.get_mut(&self.layer_id) {
             let object = MapObject::new(&self.id, self.kind, self.position);
 
@@ -46,7 +47,9 @@ impl UndoableAction for CreateObject {
             ));
         }
 
-        Ok(())
+        let inverse = Box::new(DeleteObject::new(0, self.layer_id));
+
+        Ok(inverse)
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

@@ -8,6 +8,7 @@ use core::error::Result;
 
 use crate::map::Map;
 
+use super::DeleteLayer;
 use super::UndoableAction;
 
 use crate::map::MapLayerKind;
@@ -32,7 +33,7 @@ impl CreateLayer {
 }
 
 impl UndoableAction for CreateLayer {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         if map.layers.contains_key(&self.id) {
             let len = map.draw_order.len();
             for i in 0..len {
@@ -44,6 +45,8 @@ impl UndoableAction for CreateLayer {
             }
         }
 
+        let inverse = Box::new(DeleteLayer::new(self.id));
+
         let layer = MapLayer::new(&self.id, self.kind, self.has_collision, map.grid_size);
         map.layers.insert(self.id.clone(), layer);
 
@@ -51,13 +54,13 @@ impl UndoableAction for CreateLayer {
             if i <= map.draw_order.len() {
                 map.draw_order.insert(i, self.id.clone());
 
-                return Ok(());
+                return Ok(inverse);
             }
         }
 
         map.draw_order.push(self.id.clone());
 
-        Ok(())
+        Ok(inverse)
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

@@ -6,6 +6,7 @@ use core::error::Result;
 
 use crate::map::Map;
 
+use super::CreateObject;
 use super::UndoableAction;
 
 use crate::map::MapObject;
@@ -28,18 +29,25 @@ impl DeleteObject {
 }
 
 impl UndoableAction for DeleteObject {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         if let Some(layer) = map.layers.get_mut(&self.layer_id) {
             let object = layer.objects.remove(self.index);
             self.object = Some(object);
+
+            let inverse = Box::new(CreateObject::new(
+                object.id,
+                object.kind,
+                object.position,
+                self.layer_id,
+            ));
+
+            Ok(inverse)
         } else {
             return Err(Error::new_const(
                 ErrorKind::EditorAction,
                 &"DeleteObject: The specified layer does not exist",
             ));
         }
-
-        Ok(())
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

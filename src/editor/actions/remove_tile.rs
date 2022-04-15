@@ -10,6 +10,7 @@ use core::error::Result;
 
 use crate::map::Map;
 
+use super::PlaceTile;
 use super::UndoableAction;
 
 use crate::map::MapTile;
@@ -32,7 +33,7 @@ impl RemoveTile {
 }
 
 impl UndoableAction for RemoveTile {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         let i = map.to_index(self.coords);
 
         if let Some(layer) = map.layers.get_mut(&self.layer_id) {
@@ -41,6 +42,19 @@ impl UndoableAction for RemoveTile {
                     self.tile = Some(tile);
 
                     layer.tiles.insert(i, None);
+
+                    let inverse: Box<dyn UndoableAction> = if let Some(old_tile) = self.tile {
+                        Box::new(PlaceTile::new(
+                            old_tile.tile_id,
+                            self.layer_id,
+                            old_tile.tileset_id,
+                            self.coords,
+                        ))
+                    } else {
+                        Box::new(RemoveTile::new(self.layer_id, self.coords))
+                    };
+
+                    Ok(inverse)
                 } else {
                     return Err(Error::new_const(ErrorKind::EditorAction, &"RemoveTile: No tile at the specified coords, in the specified layer. Undo was probably called on an action that was never applied"));
                 }
@@ -56,8 +70,6 @@ impl UndoableAction for RemoveTile {
                 &"RemoveTile: The specified layer does not exist",
             ));
         }
-
-        Ok(())
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

@@ -10,6 +10,7 @@ use core::error::Result;
 
 use crate::map::Map;
 
+use super::RemoveTile;
 use super::UndoableAction;
 
 use crate::map::MapTile;
@@ -36,7 +37,7 @@ impl PlaceTile {
 }
 
 impl UndoableAction for PlaceTile {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         if let Some(tileset) = map.tilesets.get(&self.tileset_id) {
             let texture_id = tileset.texture_id.clone();
             let texture_coords = tileset.get_texture_coords(self.id);
@@ -56,6 +57,20 @@ impl UndoableAction for PlaceTile {
                     };
 
                     layer.tiles.insert(i as usize, Some(tile));
+
+                    let inverse: Box<dyn UndoableAction> =
+                        if let Some(old_tile) = self.replaced_tile {
+                            Box::new(PlaceTile::new(
+                                old_tile.tile_id,
+                                self.layer_id,
+                                old_tile.tileset_id,
+                                self.coords,
+                            ))
+                        } else {
+                            Box::new(RemoveTile::new(self.layer_id, self.coords))
+                        };
+
+                    Ok(inverse)
                 } else {
                     return Err(Error::new_const(
                         ErrorKind::EditorAction,
@@ -74,8 +89,6 @@ impl UndoableAction for PlaceTile {
                 &"PlaceTile: The specified tileset does not exist",
             ));
         }
-
-        Ok(())
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

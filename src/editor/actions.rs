@@ -204,7 +204,13 @@ impl UiActionExt for Option<UiAction> {
 
 /// All actions that modify map data should implement this trait
 pub trait UndoableAction {
-    fn apply_to(&mut self, _map: &mut Map) -> Result<()>;
+    /// Applies the action to a map, and returns the inverse action (One action that, when applied,
+    /// will undo this change).
+    ///
+    /// Boxing on the inverse is required to retain [object safety].
+    ///
+    /// [object safety]: https://doc.rust-lang.org/reference/items/traits.html#object-safety
+    fn apply_to(&mut self, _map: &mut Map) -> Result<Box<dyn UndoableAction>>;
 
     fn undo(&mut self, _map: &mut Map) -> Result<()>;
 

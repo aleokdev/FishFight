@@ -6,6 +6,7 @@ use core::error::Result;
 
 use crate::map::Map;
 
+use super::CreateTileset;
 use super::UndoableAction;
 
 use crate::map::MapTileset;
@@ -23,17 +24,19 @@ impl DeleteTileset {
 }
 
 impl UndoableAction for DeleteTileset {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         if let Some(tileset) = map.tilesets.remove(&self.id) {
             self.tileset = Some(tileset);
+
+            let inverse = Box::new(CreateTileset::new(self.id, tileset.texture_id));
+
+            Ok(inverse)
         } else {
             return Err(Error::new_const(
                 ErrorKind::EditorAction,
                 &"DeleteTileset: The specified tileset does not exist",
             ));
         }
-
-        Ok(())
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

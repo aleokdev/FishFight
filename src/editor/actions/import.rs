@@ -40,7 +40,7 @@ impl Import {
 }
 
 impl UndoableAction for Import {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         for tileset in &self.tilesets {
             let mut first_tile_id = 1;
             for tileset in map.tilesets.values() {
@@ -77,6 +77,8 @@ impl UndoableAction for Import {
 
         map.background_layers
             .append(&mut self.background_layers.clone());
+
+        // TODO: Inverse
 
         Ok(())
     }

@@ -6,6 +6,7 @@ use core::error::Result;
 
 use crate::map::Map;
 
+use super::CreateLayer;
 use super::UndoableAction;
 
 use crate::map::MapLayer;
@@ -28,34 +29,39 @@ impl DeleteLayer {
 }
 
 impl UndoableAction for DeleteLayer {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         if let Some(layer) = map.layers.remove(&self.id) {
+            let len = map.draw_order.len();
+            for i in 0..len {
+                let layer_id = map.draw_order.get(i).unwrap();
+                if layer_id == &self.id {
+                    map.draw_order.remove(i);
+                    self.draw_order_index = Some(i);
+                    break;
+                }
+            }
+
+            if self.draw_order_index.is_none() {
+                return Err(Error::new_const(
+                    ErrorKind::EditorAction,
+                    &"DeleteLayer: The specified layer was not found in the draw order array",
+                ));
+            }
+            let inverse = Box::new(CreateLayer::new(
+                self.id,
+                layer.kind,
+                layer.has_collision,
+                self.draw_order_index,
+            ));
             self.layer = Some(layer);
+
+            Ok(inverse)
         } else {
             return Err(Error::new_const(
                 ErrorKind::EditorAction,
                 &"DeleteLayer: The specified layer does not exist",
             ));
         }
-
-        let len = map.draw_order.len();
-        for i in 0..len {
-            let layer_id = map.draw_order.get(i).unwrap();
-            if layer_id == &self.id {
-                map.draw_order.remove(i);
-                self.draw_order_index = Some(i);
-                break;
-            }
-        }
-
-        if self.draw_order_index.is_none() {
-            return Err(Error::new_const(
-                ErrorKind::EditorAction,
-                &"DeleteLayer: The specified layer was not found in the draw order array",
-            ));
-        }
-
-        Ok(())
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {

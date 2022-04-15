@@ -34,12 +34,16 @@ impl MoveObject {
 }
 
 impl UndoableAction for MoveObject {
-    fn apply_to(&mut self, map: &mut Map) -> Result<()> {
+    fn apply_to(&mut self, map: &mut Map) -> Result<Box<dyn UndoableAction>> {
         if let Some(layer) = map.layers.get_mut(&self.layer_id) {
             if let Some(object) = layer.objects.get_mut(self.index) {
-                self.old_position = Some(object.position);
+                let old_position = object.position;
 
                 object.position = self.position;
+
+                let inverse = Box::new(MoveObject::new(self.layer_id, self.index, old_position));
+
+                Ok(inverse)
             } else {
                 return Err(Error::new_const(
                     ErrorKind::EditorAction,
@@ -52,8 +56,6 @@ impl UndoableAction for MoveObject {
                 &"MoveObject: The specified layer does not exist",
             ));
         }
-
-        Ok(())
     }
 
     fn undo(&mut self, map: &mut Map) -> Result<()> {
